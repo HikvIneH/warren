@@ -1,6 +1,6 @@
 # warren
 
-`mole` keeps your Mac tidy. **warren** keeps your Claude Code worktrees tidy.
+**warren** keeps your Claude Code worktrees tidy.
 
 Every time Claude Code isolates a task it creates `<repo>/.claude/worktrees/<name>`
 — a full checkout. Nothing ever deletes them. On the machine this was written on
@@ -173,5 +173,4 @@ and the test binary sets `WARREN_NO_DEFAULT_ROOTS`.
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Inspired by [mole](https://github.com/tw93/mole), but
-shares no code with it.
+MIT — see [LICENSE](LICENSE).
