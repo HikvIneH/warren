@@ -9,6 +9,8 @@ they had reached 114 worktrees across 19 repos and about 12 GB.
 `warren` finds them all, works out which ones still hold something you would miss,
 and removes only the rest.
 
+![warren list: every worktree with a keep-or-drop verdict and the reason](docs/demo.png)
+
 ```
 warren list       every worktree, with a keep-or-drop verdict
 warren analyze    where the disk went
@@ -97,12 +99,21 @@ call was refused.
 
 ## Install
 
+Prebuilt binaries for macOS and Linux are on the
+[releases page](https://github.com/HikvIneH/warren/releases). Or build it:
+
 ```sh
 go install github.com/hikvineh/warren@latest     # binary only
 ```
 or, for the binary, the `wr` alias and the Claude skill:
 ```sh
 git clone https://github.com/hikvineh/warren && cd warren && ./install.sh
+```
+
+If you installed the binary another way, the skill is also a Claude Code plugin:
+```
+/plugin marketplace add HikvIneH/warren
+/plugin install warren@warren
 ```
 
 Requires `git`; `lsof` for live-session detection (stock on macOS and most
