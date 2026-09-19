@@ -393,15 +393,6 @@ func cmdClean(cfg *Config, args []string) int {
 		}
 		res.Worktrees = append(res.Worktrees, item)
 	}
-	if !*dry {
-		seen := map[string]bool{}
-		for _, w := range cands {
-			if !seen[w.Repo] {
-				seen[w.Repo] = true
-				_, _ = git(w.Repo, "worktree", "prune")
-			}
-		}
-	}
 	if sc.json {
 		emitJSON(res)
 	} else if !*dry {

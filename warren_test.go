@@ -479,3 +479,48 @@ func TestGHFailureKeepsStaleCache(t *testing.T) {
 		t.Errorf("cache was wiped on failure: %q", b)
 	}
 }
+
+// --- scope and registrations ---------------------------------------------------------
+
+func TestRepoOwningRelativePath(t *testing.T) {
+	f := newFixture(t)
+	f.addPushed("idle")
+	t.Chdir(f.repo)
+	if got, err := repoOwning("."); err != nil || got != f.repo {
+		t.Fatalf("repoOwning(.) = %q, %v; want %s", got, err, f.repo)
+	}
+	// A registered worktree must not read as an orphan just because the scope
+	// was given relative to the working directory.
+	out := captureStdout(t, func() { cmdList(f.cfg, []string{"--json", "--repo", "."}) })
+	var ws []Worktree
+	if err := json.Unmarshal([]byte(out), &ws); err != nil || len(ws) != 1 {
+		t.Fatalf("err=%v out=%s", err, out)
+	}
+	want(t, &ws[0], Idle, "")
+}
+
+// clean removes what it was asked to and nothing else: a registration whose
+// directory is missing (a worktree on an unplugged drive) is not its business.
+func TestCleanLeavesOtherRegistrationsAlone(t *testing.T) {
+	f := newFixture(t)
+	f.addPushed("idle")
+	os.MkdirAll(f.wt("stray"), 0o755) // an orphan, removed directly
+	os.WriteFile(filepath.Join(f.wt("stray"), "junk"), []byte("x\n"), 0o644)
+	elsewhere := filepath.Join(filepath.Dir(f.root), "drive", "feature")
+	run(t, f.repo, "git", "worktree", "add", "-q", "-b", "feature", elsewhere)
+	unplugged := filepath.Join(filepath.Dir(f.root), "drive-unplugged")
+	if err := os.Rename(filepath.Dir(elsewhere), unplugged); err != nil {
+		t.Fatal(err)
+	}
+	var rc int
+	out := captureStdout(t, func() { rc = cmdClean(f.cfg, []string{"--idle", "--yes", "--json", "--no-size"}) })
+	var res cleanResult
+	if err := json.Unmarshal([]byte(out), &res); err != nil || rc != 0 || res.Removed != 2 {
+		t.Fatalf("rc=%d err=%v out=%s", rc, err, out)
+	}
+	if list := run(t, f.repo, "git", "worktree", "list", "--porcelain"); !strings.Contains(list, "branch refs/heads/feature") {
+		t.Errorf("clean pruned the registration of a worktree it was not asked to touch:\n%s", list)
+	}
+	os.Rename(unplugged, filepath.Dir(elsewhere))
+	run(t, elsewhere, "git", "status") // still a working checkout once the drive is back
+}

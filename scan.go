@@ -112,6 +112,11 @@ func findRepos(roots []string, maxDepth int) []string {
 // repoOwning resolves the main repository that owns a path, even from inside
 // one of its worktrees.
 func repoOwning(p string) (string, error) {
+	// Worktree paths from git are absolute; a relative scope would match none
+	// of them and every registered worktree would read as an orphan.
+	if abs, err := filepath.Abs(expandHome(p)); err == nil {
+		p = abs
+	}
 	out, err := git(p, "rev-parse", "--git-common-dir")
 	if err != nil {
 		return "", err

@@ -31,10 +31,12 @@ func removeOne(w *Worktree, deleteBranch bool) (outcome, detail string) {
 		}
 	}
 	if w.Verdict == Orphan {
+		// An orphan has no registration, so there is nothing to prune. A
+		// repo-wide `git worktree prune` would also drop registrations the
+		// user never selected, such as a worktree on an unplugged drive.
 		if err := os.RemoveAll(w.Path); err != nil {
 			return "failed", err.Error()
 		}
-		_, _ = git(w.Repo, "worktree", "prune")
 		return "removed", ""
 	}
 	if _, err := git(w.Repo, "worktree", "remove", w.Path); err != nil {
