@@ -14,6 +14,13 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - name: Tag matches the version in the code
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          code=$(sed -n 's/^const version = "\(.*\)"$/\1/p' config.go)
+          plugin=$(jq -r .version .claude-plugin/plugin.json)
+          echo "tag=$tag code=$code plugin=$plugin"
+          test "$tag" = "$code" && test "$tag" = "$plugin"
       - run: go test ./...
         env:
           GIT_AUTHOR_NAME: ci
@@ -26,3 +33,4 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}

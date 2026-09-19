@@ -15,6 +15,11 @@ every removal as destructive and follow the workflow below.
 
 ## Workflow
 
+**0. Check warren is installed.** Run `command -v warren`. If it prints nothing,
+the plugin is here but the binary is not: tell the user to install it with
+`brew install hikvineh/tap/warren` or
+`go install github.com/hikvineh/warren@latest`, and stop there.
+
 **1. Decide the scope.** If the user means the repo they are in ("this repo",
 "here", or they are clearly working in one), pass `--here`. If they mean
 everything ("all my worktrees", "my machine"), pass nothing. Ask only if it is
