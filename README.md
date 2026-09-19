@@ -1,13 +1,16 @@
 # warren
 
-`mole` keeps your Mac tidy. **warren** keeps your Claude Code worktrees tidy.
+A small pet project for tidying up Claude Code worktrees.
 
-Every time Claude Code isolates a task it creates `<repo>/.claude/worktrees/<name>`
-— a full checkout. Nothing ever deletes them. On the machine this was written on
-they had reached 114 worktrees across 19 repos and about 12 GB.
+Claude Code creates `<repo>/.claude/worktrees/<name>`, a full checkout, when it
+isolates a task. You may well not need this: Claude Code now cleans up many of
+these itself, and [mole](https://github.com/tw93/mole) will show you how much
+space the rest take.
 
-`warren` finds them all, works out which ones still hold something you would miss,
-and removes only the rest.
+I wrote warren for my own machine, where they had piled up to 114 worktrees across
+19 repos and about 12 GB. It finds them, works out which ones still hold something
+you would miss, and removes only the rest. It's shared in case it's useful to
+someone else. Expect rough edges.
 
 ![warren list: every worktree with a keep-or-drop verdict and the reason](docs/demo.png)
 
