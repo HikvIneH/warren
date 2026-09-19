@@ -5,9 +5,9 @@ description: "Find and safely remove leftover Claude Code worktrees under <repo>
 
 ## What this is
 
-Claude Code creates `<repo>/.claude/worktrees/<name>` for every isolated task and
-never removes them. They accumulate silently — a hundred-plus worktrees and many GB
-across every repo the user has worked in.
+Claude Code creates `<repo>/.claude/worktrees/<name>` for isolated tasks. It
+cleans up many of them itself, but the rest can pile up across every repo the
+user has worked in, a full checkout each.
 
 `warren` scans for them, decides which ones still hold work the user would miss,
 and removes only the rest. Deleting a worktree deletes a real checkout, so treat
