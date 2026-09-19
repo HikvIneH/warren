@@ -1,0 +1,10 @@
+{
+  "name": "warren",
+  "version": "0.1.0",
+  "description": "Find leftover Claude Code worktrees across every repo and remove only the ones holding nothing you'd miss. Needs the warren binary on PATH.",
+  "author": { "name": "HikvIneH", "url": "https://github.com/HikvIneH" },
+  "homepage": "https://github.com/HikvIneH/warren",
+  "repository": "https://github.com/HikvIneH/warren",
+  "license": "MIT",
+  "keywords": ["worktrees", "git", "cleanup", "disk"]
+}

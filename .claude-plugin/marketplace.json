@@ -1,0 +1,17 @@
+{
+  "name": "warren",
+  "owner": {
+    "name": "HikvIneH",
+    "url": "https://github.com/HikvIneH"
+  },
+  "metadata": {
+    "description": "warren: keep Claude Code worktrees under control."
+  },
+  "plugins": [
+    {
+      "name": "warren",
+      "source": "./",
+      "description": "Find leftover Claude Code worktrees and safely remove the ones whose PR is merged or closed."
+    }
+  ]
+}
