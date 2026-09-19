@@ -100,13 +100,9 @@ call was refused.
 ## Install
 
 ```sh
-brew install hikvineh/tap/warren
-```
-or, with Go:
-```sh
 go install github.com/hikvineh/warren@latest
 ```
-Prebuilt binaries for macOS and Linux are also on the
+Prebuilt binaries for macOS and Linux are on the
 [releases page](https://github.com/HikvIneH/warren/releases).
 
 Then add the Claude Code skill:

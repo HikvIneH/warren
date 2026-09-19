@@ -35,6 +35,4 @@ jobs:
         with:
           version: '~> v2'
           args: release --snapshot --clean
-        env:
-          HOMEBREW_TAP_TOKEN: ''
-      - run: find dist -name "*.rb" -exec cat {} +
+      - run: ls dist

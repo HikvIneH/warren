@@ -12,26 +12,3 @@ checksum:
   name_template: checksums.txt
 changelog:
   use: github
-homebrew_casks:
-  - name: warren
-    repository:
-      owner: HikvIneH
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    homepage: https://github.com/HikvIneH/warren
-    description: Find leftover Claude Code worktrees and remove only the ones holding nothing you'd miss
-    license: MIT
-    # Publishing needs a PAT with write access to the tap; without one the
-    # release still ships, just without updating the cask.
-    skip_upload: '{{ if .Env.HOMEBREW_TAP_TOKEN }}false{{ else }}true{{ end }}'
-    caveats: |
-      For the Claude Code skill:
-        /plugin marketplace add HikvIneH/warren
-        /plugin install warren@warren
-    hooks:
-      post:
-        # The binary is not notarized; clear the quarantine flag Gatekeeper sets.
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/warren"]
-          end
