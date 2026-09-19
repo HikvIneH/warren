@@ -99,21 +99,22 @@ call was refused.
 
 ## Install
 
+```sh
+go install github.com/hikvineh/warren@latest
+```
 Prebuilt binaries for macOS and Linux are on the
-[releases page](https://github.com/HikvIneH/warren/releases). Or build it:
+[releases page](https://github.com/HikvIneH/warren/releases).
 
-```sh
-go install github.com/hikvineh/warren@latest     # binary only
-```
-or, for the binary, the `wr` alias and the Claude skill:
-```sh
-git clone https://github.com/hikvineh/warren && cd warren && ./install.sh
-```
-
-If you installed the binary another way, the skill is also a Claude Code plugin:
+Then add the Claude Code skill:
 ```
 /plugin marketplace add HikvIneH/warren
 /plugin install warren@warren
+```
+
+Or, from a clone, `./install.sh` builds the binary, adds the `wr` alias and links
+the skill in one go:
+```sh
+git clone https://github.com/hikvineh/warren && cd warren && ./install.sh
 ```
 
 Requires `git`; `lsof` for live-session detection (stock on macOS and most
