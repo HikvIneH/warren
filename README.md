@@ -93,10 +93,12 @@ Run `warren` with no arguments for an interactive menu.
 | `--repo <path>` | list, analyze, clean, prune, path | Only the repo owning `<path>` |
 | `--json` | list, analyze, clean, prune | Machine-readable output |
 | `--dry-run`, `-n` | clean, prune | Preview; never delete |
-| `--yes`, `-y` | clean | Skip the confirmation prompt |
+| `--yes`, `-y` | clean, prune | Skip the confirmation prompt |
 | `--idle` | clean | Also drop pushed worktrees that have no PR |
-| `--branches` | clean | Delete the local branch too |
-| `--allow-ignored` | clean | Do not hold worktrees just for gitignored files |
+| `--branches` | clean | Also run `git branch -d` on the local branch (safe delete: git keeps a branch it considers unmerged, which includes squash-merged ones) |
+| `--no-size` | clean | Skip measuring sizes |
+| `--top N` | analyze | How many of the largest worktrees to show (default 15) |
+| `--allow-ignored` | clean | Do not hold worktrees just for gitignored files (see the caveat under Safety guarantees) |
 | `--only <verdict>` | list | Show one verdict; `--hold`, `--reclaim`, `--orphan` are shorthands |
 | `--size`, `-s` | list | Measure disk usage too (slower) |
 
@@ -120,8 +122,14 @@ warren prune --dry-run       # stale registrations + orphan directories
 
 ### JSON and agents
 
-`clean --json` refuses to remove anything without `--yes` (exit 2), so an agent has
-to plan before it can delete:
+`clean --json` and `prune --json` refuse to remove anything without `--yes` (exit
+2; `--dry-run` is always allowed), so an agent has to plan before it can delete.
+`list --json` and `analyze --json` print an array of worktree objects (`repo`,
+`path`, `worktree`, `branch`, `dirty`, `unpushed`, `ignored`, `in_use`, `locked`,
+`unreadable`, `pr_state`, `pr`, `verdict`, `reason`, `size_kb`, and so on). The
+`clean` example below is abbreviated; the full document also has `reclaimed_kb`,
+`removed`, `failed` and `skipped` counts, and each entry carries `repo`, `path`,
+`branch`, `size_kb` and, when something went wrong, `detail`.
 
 ```sh
 warren clean --dry-run --json --here
@@ -172,11 +180,15 @@ A worktree is **held**, and no flag removes it, when any of these is true:
 - it has uncommitted changes, including untracked files;
 - it has commits that are on no remote (`git log HEAD --not --remotes`);
 - it contains a gitignored file that looks like secrets or local config: `.env*`,
-  `*.local`, `*.pem`/`*.key`, credentials, local databases, `*.tfvars` and similar.
-  Build output, caches and logs never count. `--allow-ignored` turns this check off;
+  `*.local`, `*.pem`/`*.key`, `id_rsa*`, `*.tfvars`, `*.sqlite`/`*.db`, `.npmrc`,
+  `.netrc`, `terraform.tfstate`, and names containing `secret`, `credential`,
+  `password` or `token`. It is an allowlist: directories, and anything inside
+  `node_modules`, `dist`, `build`, `.venv`, `target` and similar cache directories,
+  never count (`scan.go:219`);
 - git has it locked (`git worktree lock`);
-- some process has it as its working directory (a live Claude session, a shell, an
-  editor);
+- a process owned by you has it (or a subdirectory) as its working directory: a live
+  Claude session, a shell, an editor. This needs `lsof`; without it warren cannot see
+  live sessions (`scan.go:140`);
 - its PR is open;
 - git cannot read it at all.
 
@@ -185,25 +197,50 @@ In addition:
 - **The data-loss guard is git, not GitHub.** A clean tree and no commit outside the
   remotes holds with no network and no `gh`.
 - **It re-checks at the moment of deletion.** The scan can be seconds stale, so every
-  removal re-runs the dirty, unpushed and ignored-file checks and refuses if anything
-  changed. `--yes` does not bypass this.
-- **Registered worktrees are only removed with `git worktree remove`.** There is no
-  `rm -rf` fallback, so git's own refusals (locked, dirty, submodules) stand. Only
-  unregistered orphan directories are deleted directly, and even those go through the
-  guard if they turn out to contain a repository.
-- **One unreadable worktree does not hide the others.** It is reported as held.
-- **Every removal is logged** to `~/.config/warren/history.log` (`warren history`).
+  removal of a directory containing `.git` re-runs the unreadable, dirty, unpushed and
+  ignored-file checks and skips it if anything turned up (`clean.go:19-32`). `--yes`
+  does not bypass this. Lock, live-session and PR state are not re-checked here; git's
+  own refusal covers locks.
+- **Registered worktrees are only removed with `git worktree remove`** (no `--force`,
+  no `rm -rf` fallback), so git's own refusals (locked, dirty, submodules) stand
+  (`clean.go:42`). Only unregistered orphan directories are deleted directly, with
+  `os.RemoveAll` (`clean.go:37`). They go through the guard above only if they contain
+  a `.git`; an orphan without one is removed unconditionally.
+- **Hold is decided before any flag applies.** `clean` only ever collects `reclaim` and
+  `orphan` worktrees, plus `idle` ones with `--idle`; `hold` is never a candidate
+  (`commands.go:309-323`).
+- **One unreadable worktree does not hide the others.** It is reported as held
+  (`scan.go:254`, `scan.go:312`).
+- **Every removal is logged** to `~/.config/warren/history.log` (`warren history`
+  shows the last 50 lines).
+
+Two caveats:
+
+- `--allow-ignored` stops the scan from holding on ignored files, but the
+  deletion-time check still looks at them and skips the worktree with "ignored file
+  appeared" (`clean.go:29`). In practice the flag only changes the verdict shown.
+- `prune` (without `--dry-run`) runs `git worktree prune` for stale registrations
+  before it asks for confirmation (`commands.go:443-449`); only the orphan directory
+  deletion is gated by the prompt and `--yes`.
 
 ## How it works
 
-1. Find repos under the configured roots and list their Claude worktrees.
-2. Run the git checks in parallel: dirty tree, commits on no remote, ignored files,
-   locks, and processes whose working directory is inside the worktree (via `lsof`).
-3. Ask GitHub for the real PR state of each branch through `gh`. Most repos squash on
-   merge, so a merged branch is never an ancestor of `main` and `git branch --merged`
-   reports nothing. Answers are cached for six hours, and if GitHub is unreachable the
-   last good answer is kept rather than forgotten.
-4. Combine the results into one verdict per worktree. `clean` re-verifies each
+1. Walk the configured roots (up to `WARREN_MAXDEPTH` levels, skipping `node_modules`,
+   `vendor`, `Library` and similar) for repos with a non-empty `.claude/worktrees`
+   (`scan.go:75`). Every subdirectory there is a worktree; one that `git worktree
+   list` does not register is an orphan.
+2. For each registered worktree, in parallel, run `git status --porcelain=v2 --branch
+   --ignored=matching` and `git rev-list --count HEAD --not --remotes` to get dirty
+   files, ignored files and commits on no remote, read lock state from `git worktree
+   list --porcelain`, and check for processes inside it via one `lsof` call.
+3. Look up the PR for the branch (its upstream name if it has one) with `gh`. Most
+   repos squash on merge, so a merged branch is never an ancestor of `main` and
+   `git branch --merged` reports nothing. One `gh pr list --state all --limit 400` per
+   repo fills a cache for six hours; branches missing from it get one per-branch
+   lookup. If `gh` fails, the stale cache is kept rather than wiped (`github.go`).
+4. Classify each worktree in a fixed order (`scan.go:308`): unreadable, uncommitted,
+   unpushed, precious ignored file, locked, live session and open PR all give `hold`;
+   then merged or closed PR gives `reclaim`; otherwise `idle`. `clean` re-verifies each
    candidate, then removes it.
 
 ## Contributing
